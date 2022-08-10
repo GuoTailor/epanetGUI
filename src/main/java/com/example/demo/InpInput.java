@@ -25,7 +25,7 @@ public class InpInput {
 
     public static void main(String[] args) throws InterruptedException, ExecutionException, IOException {
         log.info("开始");
-        NetworkDataInfo dataInfo = new InpInput().inpInput("E:\\2.inp");
+        NetworkDataInfo dataInfo = new InpInput().inpInput("E:\\1.inp");
         TestFrame testFrame = new TestFrame();
         testFrame.start();
         log.info("显示");

@@ -4,10 +4,7 @@ import com.example.demo.draw.TestFrame;
 import com.example.demo.model.*;
 import org.springframework.beans.BeanUtils;
 
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * Created by GYH on 2021/9/13
@@ -16,18 +13,21 @@ public class SimpleNetwork {
     private final CodeGenerate codeGenerate = new CodeGenerate();
 
     public void simplify(NetworkDataInfo data, TestFrame draw) throws InterruptedException {
-        LinkedList<SimpleNode> allNode = new LinkedList<>();
-        LinkedList<SimpleLink> allLink = new LinkedList<>();
-        data.points.forEach(p -> allNode.add(new SimpleNode(p)));
-        data.pools.forEach(p -> allNode.add(new SimpleNode(p)));
-        data.reservoirs.forEach(p -> allNode.add(new SimpleNode(p)));
+        long time = System.currentTimeMillis();
+//        LinkedList<SimpleNode> allNode = new LinkedList<>();
+        HashMap<String, SimpleNode> allNode = new HashMap<>(100_000);
+        ArrayList<SimpleLink> allLink = new ArrayList<>(70_000);
+        data.points.forEach(p -> allNode.put(p.getCode(), new SimpleNode(p)));
+        data.pools.forEach(p -> allNode.put(p.getCode(), new SimpleNode(p)));
+        data.reservoirs.forEach(p -> allNode.put(p.getCode(), new SimpleNode(p)));
         data.pipes.forEach(p -> allLink.add(new SimpleLink(p)));
         data.pumps.forEach(p -> allLink.add(new SimpleLink(p)));
         data.valves.forEach(p -> allLink.add(new SimpleLink(p)));
         LinkedList<Object> simplify = new LinkedList<>();
         LinkedList<SimpleNode> queue = new LinkedList<>();
+        System.out.println(allNode.size() + " " + allLink.size());
 
-        long time = System.currentTimeMillis();
+
         SimpleNode first = createNetwork(allNode, allLink);
         //SimpleNode first = allNode.getFirst();
         System.out.println(System.currentTimeMillis() - time);
@@ -39,7 +39,7 @@ public class SimpleNetwork {
             if (node.state == 1) continue;
             node.state = 1;
             draw.print(node);
-            Thread.sleep(100);
+//            Thread.sleep(100);
             boolean si = isSimplify(node);
             if (si) {
                 simplify.add(node.target);
@@ -67,6 +67,43 @@ public class SimpleNetwork {
             findLink(firstNode, allLink);
         }
         return firstNode;
+    }
+
+    public void findLink(SimpleNode node, LinkedList<SimpleLink> allLink) {
+        Iterator<SimpleLink> iterator = allLink.iterator();
+        while (iterator.hasNext()) {
+            SimpleLink link = iterator.next();
+            if (link.startCode.equals(node.code) || link.endCode.equals(node.code)) {
+                link.state++;
+                link.nodes.add(node);
+                node.links.add(link);
+                if (link.state == 2) {
+                    iterator.remove();
+                }
+            }
+        }
+    }
+
+    public SimpleNode createNetwork(HashMap<String, SimpleNode> allNode, ArrayList<SimpleLink> allLink) {
+        SimpleLink firstLink = null;
+        for (SimpleLink it : allLink) {
+            firstLink = it;
+            findNode(firstLink, allNode);
+        }
+        return firstLink.nodes.getFirst();
+    }
+
+    public void findNode(SimpleLink link, HashMap<String, SimpleNode> allNodes) {
+        if (link.startCode != null) {
+            SimpleNode startNode = allNodes.get(link.startCode);
+            link.nodes.add(startNode);
+            startNode.links.add(link);
+        }
+        if (link.endCode != null) {
+            SimpleNode endNode = allNodes.get(link.endCode);
+            link.nodes.add(endNode);
+            endNode.links.add(link);
+        }
     }
 
     public void pipSimp(SimpleNode node, NetworkDataInfo data, TestFrame draw) {
@@ -221,21 +258,6 @@ public class SimpleNetwork {
             nodeCoordinate.setLongitude(((OcReservoir) o).getLongitude());
         }
         return nodeCoordinate;
-    }
-
-    public void findLink(SimpleNode node, LinkedList<SimpleLink> allLink) {
-        Iterator<SimpleLink> iterator = allLink.iterator();
-        while (iterator.hasNext()) {
-            SimpleLink link = iterator.next();
-            if (link.startCode.equals(node.code) || link.endCode.equals(node.code)) {
-                link.state++;
-                link.nodes.add(node);
-                node.links.add(link);
-                if (link.state == 2) {
-                    iterator.remove();
-                }
-            }
-        }
     }
 
     public void deleteData(List<Object> simplify, NetworkDataInfo data) {
